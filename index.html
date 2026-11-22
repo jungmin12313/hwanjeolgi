@@ -85,10 +85,10 @@
 </head>
 <body>
 <header>
-  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v15 · 2026.11.22</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
+  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v16 · 2026.11.22</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
   <div class="bar">
     <label class="fmt">형식
-      <select id="selFormat"><optgroup label="사람 이야기"><option value="interview">인터뷰형 (여러 명)</option><option value="qa">문답형 (한 사람)</option><option value="essay">에세이형 (본인)</option><option value="curation">연예인 큐레이션</option></optgroup><optgroup label="에디터 콘텐츠"><option value="number">숫자 한 장</option><option value="note">환절기 노트</option><option value="signal">계절 신호</option><option value="shelf">계절의 책장</option></optgroup></select>
+      <select id="selFormat"><optgroup label="사람 이야기"><option value="interview">인터뷰형 (여러 명)</option><option value="four">같은 질문, 네 개의 계절</option><option value="qa">문답형 (한 사람)</option><option value="essay">에세이형 (본인)</option><option value="curation">연예인 큐레이션</option></optgroup><optgroup label="기록자 콘텐츠"><option value="number">숫자 한 장</option><option value="note">환절기 노트</option><option value="signal">계절 신호</option><option value="shelf">계절의 책장</option></optgroup></select>
     </label>
     <button class="ghost" id="btnAuth" type="button" hidden>로그인 (기기 동기화)</button>
     <button class="ghost" id="btnUndo" type="button" title="Ctrl+Z">↶ 되돌리기</button>
@@ -175,18 +175,18 @@ const INK = '#1B1918', WHITE = '#FFFFFF', BG = '#FFFFFF', GRAY = '#4E4A45', SUB 
 // 계절 색: "어느 계절에 있나요" 장에서만 사용
 const SEASON = { '봄': '#D2577A', '여름': '#0F5A47', '가을': '#B5441C', '겨울': '#2E4A75' };
 const SEASONS = ['봄', '여름', '가을', '겨울'];
-const FORMATS = { qa: '문답형', interview: '인터뷰형', essay: '에세이형', curation: '연예인 큐레이션', number: '숫자 한 장', note: '환절기 노트', signal: '계절 신호', shelf: '계절의 책장' };
-// 형식별 마지막 장 기본값: 어느 계절 장 / 에디터 정리 장
-const ENDS = { qa: [1, 0], essay: [1, 0], interview: [0, 1], curation: [0, 1], number: [0, 1], note: [0, 1], signal: [0, 1], shelf: [0, 1] };
+const FORMATS = { qa: '문답형', interview: '인터뷰형', four: '같은 질문, 네 개의 계절', essay: '에세이형', curation: '연예인 큐레이션', number: '숫자 한 장', note: '환절기 노트', signal: '계절 신호', shelf: '계절의 책장' };
+// 형식별 마지막 장 기본값: 어느 계절 장 / 기록자의 말
+const ENDS = { qa: [1, 0], essay: [1, 0], interview: [0, 1], four: [0, 1], curation: [0, 1], number: [0, 1], note: [0, 1], signal: [0, 1], shelf: [0, 1] };
 const PERSON = f => f === 'qa' || f === 'interview' || f === 'essay';
-const TARGET = { qa: '장마다 문답 2쌍 · 약 350자', interview: '소개 약 230자 · 발언 500자 이상', essay: '한 문단 230~390자', curation: '소개 약 230자 · 공개 발언 300~500자', number: '장면 150~250자', note: '300~400자', signal: '장면 4~5줄', shelf: '200~300자' };
+const TARGET = { four: '소개 약 200자 · 발언 400자 이상', qa: '장마다 문답 2쌍 · 약 350자', interview: '소개 약 230자 · 발언 500자 이상', essay: '한 문단 230~390자', curation: '소개 약 230자 · 공개 발언 300~500자', number: '장면 150~250자', note: '300~400자', signal: '장면 4~5줄', shelf: '200~300자' };
 let CUR = null; // 장별 계절 (인터뷰형: 사람마다 계절)
 const $ = id => document.getElementById(id);
 const STORE = 'hwanjeolgi-tool-v3';
 
 // ---------- 상태 ----------
 const blankPage = f => f === 'qa' ? { headline: '', items: [{ q: '', a: '' }, { q: '', a: '' }] }
-  : f === 'interview' ? { headline: '', intro: '', speaker: '', speech: '', season: '' }
+  : f === 'interview' || f === 'four' ? { headline: '', intro: '', speaker: '', speech: '', season: '' }
   : f === 'curation' ? { headline: '', intro: '', speaker: '', speech: '', source: '' }
   : f === 'number' ? { num: '', label: '', body: '', source: '' }
   : f === 'signal' ? { headline: '', lines: '' }
@@ -197,7 +197,8 @@ const blank = (f = 'qa') => ({
   cover: { on: true, text: '', source: '', focus: 40, grade: true, dim: true },
   pages: [blankPage(f)], other: {},
   seasonPage: { on: !!(ENDS[f] || [1])[0], answer: '' },
-  wrap: { on: !!(ENDS[f] || [0, 0])[1], title: '', body: '' },
+  wrap: { on: !!(ENDS[f] || [0, 0])[1], title: '', body: '', sign: true },
+  record: { date: '', line: true, seal: 'auto' },
   cta: { on: false, question: '혼자 짊어진\n무게가 있나요?', watermark: true, title: '당신의 환절기를\n들려주세요', body: '익명이어도, 특별한 이야기가 아니어도 괜찮아요. 전해주신 이야기는 누군가에겐 커다란 희망과 위로가 될 수 있어요.', link: '사연은 프로필 링크에서 받고 있어요' }
 });
 let S = blank(), sel = 'cover', photoImg = null;
@@ -265,6 +266,25 @@ function drawLines(ctx, lines, x0, y0, lh, size, align = 'left', maxW = 0) {
     y += lh;
   }
   return y;
+}
+
+// ---------- 기록자 장치 ----------
+const josa = (w, a, b) => { const c = String(w).trim().slice(-1).charCodeAt(0) - 0xAC00; return w + (c >= 0 && c < 11172 && c % 28 ? a : b); };
+const SEAL_COL = { ink: '#1B1918', red: '#B8302A' };
+function sealMark(ctx, x, y, size, color) {
+  const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'), r = rng(911);
+  g.strokeStyle = color; g.lineJoin = 'round';
+  for (let k = 0; k < 5; k++) { g.globalAlpha = 0.55 + r() * 0.4; g.lineWidth = size * (0.045 + r() * 0.02);
+    const j = () => (r() - 0.5) * size * 0.025, m = size * 0.07;
+    g.beginPath(); g.moveTo(m + j(), m + j()); g.lineTo(size - m + j(), m + j()); g.lineTo(size - m + j(), size - m + j()); g.lineTo(m + j(), size - m + j()); g.closePath(); g.stroke(); }
+  g.globalAlpha = 1; const b = brush('환', color), h = size * 0.66, sc = h / (b.h - 60), dw = b.w * sc;
+  g.drawImage(b.c, (size - dw) / 2, (size - h) / 2 - 30 * sc + size * 0.02, dw, b.h * sc);
+  g.globalCompositeOperation = 'destination-out';
+  for (let k = 0; k < 260; k++) { g.globalAlpha = 0.25 + r() * 0.6; g.beginPath(); g.arc(r() * size, r() * size, 0.6 + r() * size * 0.012, 0, Math.PI * 2); g.fill(); }
+  ctx.save(); ctx.translate(x + size / 2, y + size / 2); ctx.rotate(-0.035); ctx.globalAlpha = 0.92; ctx.drawImage(c, -size / 2, -size / 2); ctx.restore();
+}
+function dateLine(ctx) {
+  if (!S.record.date) return; ctx.font = font('medium', 24); ctx.fillStyle = SUB; ctx.textBaseline = 'top'; ctx.fillText(plain(S.record.date), MX, 140);
 }
 
 // ---------- 공통 ----------
@@ -346,9 +366,10 @@ function emptyNote(ctx, y) { ctx.font = font('medium', 30); ctx.fillStyle = FAIN
 
 function drawPage(p, n) {
   const c = canvas(), ctx = c.getContext('2d'); paper(ctx);
-  const f = S.format; CUR = (f === 'interview' && SEASONS.includes(p.season)) ? p.season : null;
+  const f = S.format; CUR = ((f === 'interview' || f === 'four') && SEASONS.includes(p.season)) ? p.season : null;
   if (PERSON(f) || f === 'curation') header(ctx); else drawBrush(ctx, '환절기', 40, INK, 72, 64);
-  const talk = f === 'interview' || f === 'curation';
+  const talk = f === 'interview' || f === 'curation' || f === 'four';
+  if (n === 1) dateLine(ctx);
   let y = headline(ctx, p.headline, TOP + 10, talk ? 46 : 50), end = y;
   if (f === 'qa') {
     const items = (p.items || []).filter(it => it.q || it.a);
@@ -359,7 +380,7 @@ function drawPage(p, n) {
         if (it.a) it.a.split(/\n\s*\n/).forEach((t, j) => withSource(b, t, m => ({ runs: rich(m, 'regular', INK), indent: 1, gap: (!it.q && i && !j) ? 0.9 : 0.15 })));
       }); return b; });
   } else if (talk) {
-    const speaker = p.speaker || (f === 'interview' ? S.name : '');
+    const speaker = p.speaker || (f !== 'curation' ? S.name : '');
     const nameCol = SEASON[CUR || S.season] || INK;
     if (!p.intro && !p.speech) emptyNote(ctx, y);
     else end = fitBlocks(ctx, y, () => {
@@ -369,6 +390,8 @@ function drawPage(p, n) {
         const g = first ? 0 : (i === 0 ? 0.9 : 0.5);
         withSource(b, t, m => { const r = []; if (i === 0 && speaker) r.push([speaker + ' ', 'black', nameCol]); r.push(...rich(m, 'regular', INK)); return { runs: r, gap: g }; }); first = false; });
       if (p.source) b.push({ runs: [[plain(p.source), 'regular', SUB]], small: true, gap: 0.4 });
+      const ss = CUR;
+      if (f !== 'curation' && S.record.line && speaker && ss) b.push({ runs: [[josa(speaker, '은', '는') + ' 지금, ', 'medium', GRAY], [ss, 'black', SEASON[ss]], ['에 있다고 했다.', 'medium', GRAY]], gap: 0.9 });
       return b; }, 21);
   } else if (f === 'number') {
     if (!p.num && !p.label && !p.body) emptyNote(ctx, y);
@@ -402,17 +425,24 @@ function drawPage(p, n) {
     if (!p.body) emptyNote(ctx, y);
     else end = fitBlocks(ctx, y, () => { const b = []; p.body.split(/\n\s*\n/).forEach((t, i) => withSource(b, t, m => ({ runs: rich(m, 'regular', INK), indent: f === 'essay' ? 1 : 0, gap: i ? 0.6 : 0 }))); return b; });
   }
-  CUR = null;
-  pageNo(ctx, n); return { c, over: end > BOTTOM };
+  if (f === 'four' && CUR) drawBrush(ctx, CUR, 60, SEASON[CUR], 0, H - 112, true); else pageNo(ctx, n);
+  CUR = null; return { c, over: end > BOTTOM };
 }
 
-// ---------- 에디터 정리 장 ----------
+// ---------- 기록자의 말 ----------
 function drawWrap(n) {
   const c = canvas(), ctx = c.getContext('2d'), v = S.wrap; paper(ctx);
   if (PERSON(S.format) && S.format !== 'interview') header(ctx); else drawBrush(ctx, '환절기', 40, INK, 72, 64);
   let y = headline(ctx, v.title, TOP + 30), end = y;
   if (!v.title && !v.body) emptyNote(ctx, y);
   else end = fitBlocks(ctx, y, () => { const b = []; String(v.body || '').split(/\n\s*\n/).filter(Boolean).forEach((t, i) => withSource(b, t, m => ({ runs: rich(m, 'regular', INK), gap: i ? 0.9 : 0 }))); return b; });
+  if (v.sign !== false) {
+    const sz = 92, sy = Math.max(end + 70, H - 330), t = '— 환절기 기록자';
+    ctx.font = font('bold', 27); ctx.fillStyle = GRAY; ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(t).width; ctx.fillText(t, W - MX - sz - 22 - tw, sy + sz / 2);
+    const sm = S.record.seal === 'auto' ? (S.format === 'qa' || S.format === 'essay' ? 'season' : 'ink') : S.record.seal;
+    sealMark(ctx, W - MX - sz, sy, sz, sm === 'season' ? (SEASON[S.season] || INK) : (SEAL_COL[sm] || INK));
+  }
   pageNo(ctx, n); return { c, over: end > BOTTOM };
 }
 
@@ -480,7 +510,7 @@ function build() {
   items = []; let n = 0;
   if (S.cover.on) items.push({ id: 'cover', label: '표지', file: '00_표지.png', ...drawCover() });
   S.pages.forEach((p, i) => { n++; items.push({ id: 'p' + i, label: `본문 ${n}`, file: `${pad2(n)}_본문.png`, ...drawPage(p, n) }); });
-  if (S.wrap.on) { n++; items.push({ id: 'wrap', label: '에디터 정리', file: `${pad2(n)}_정리.png`, ...drawWrap(n) }); }
+  if (S.wrap.on) { n++; items.push({ id: 'wrap', label: '기록자의 말', file: `${pad2(n)}_정리.png`, ...drawWrap(n) }); }
   if (S.seasonPage.on) { n++; items.push({ id: 'season', label: '어느 계절', file: `${pad2(n)}_어느계절.png`, ...drawSeason(n) }); }
   if (S.cta.on) items.push({ id: 'cta', label: '마지막 질문', file: `${pad2(n + 1)}_마지막질문.png`, ...drawCta() });
   if (!items.length) { S.pages.push(blankPage(S.format)); return build(); }
@@ -504,7 +534,7 @@ function paint() {
   const addBtn = (txt, fn) => { const a = document.createElement('button'); a.type = 'button'; a.className = 'small'; a.textContent = txt; a.addEventListener('click', fn); strip.append(a); };
   if (S.pages.length < 10) addBtn('+ 본문 장 추가', () => { const at = sel.startsWith('p') ? +sel.slice(1) + 1 : S.pages.length; S.pages.splice(at, 0, blankPage(S.format)); sel = 'p' + at; paint(); renderPanel(); });
   if (!S.cover.on) addBtn('+ 표지 추가', () => setOn('cover', true));
-  if (!S.wrap.on) addBtn('+ 에디터 정리 장 추가', () => setOn('wrap', true));
+  if (!S.wrap.on) addBtn('+ 기록자의 말 추가', () => setOn('wrap', true));
   if (!S.seasonPage.on) addBtn('+ 어느 계절 장 추가', () => setOn('season', true));
   const curBtn = strip.querySelector('[aria-current="true"]'); if (curBtn && curBtn.scrollIntoView) curBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
   const cur = items.find(i => i.id === sel); const st = $('stageCanvas'); st.innerHTML = '';
@@ -523,6 +553,7 @@ function switchFormat(f) {
   S.other[S.format] = S.pages;
   S.format = f; S.pages = S.other[f] || [blankPage(f)]; delete S.other[f];
   const e = ENDS[f] || [1, 0]; S.seasonPage.on = !!e[0]; S.wrap.on = !!e[1];
+  if (f === 'four' && S.pages.length === 1 && !S.pages[0].speech) S.pages = SEASONS.map(x => ({ ...blankPage('four'), season: x }));
   sel = 'cover'; paint(); renderPanel();
 }
 $('selFormat').addEventListener('change', e => switchFormat(e.target.value));
@@ -568,6 +599,10 @@ function renderPanel() {
       g.addEventListener('change', () => { S.cover[key] = g.checked; schedule(); }); gl.append(g, ' ' + txt); P.append(gl); };
     chk('환절기 색감 보정', 'grade'); chk('글씨가 잘 보이게 아래쪽 어둡게', 'dim');
     P.append(field('표지 문구 (줄바꿈 그대로, 3줄 추천)', S.cover.text, v => S.cover.text = v, { rows: 3, ph: '20대 중반 경민은\n여자친구의 합격 소식과 이별을\n한 통의 전화로 들었다…' }));
+    P.append(field('날짜 줄 (본문 1장 맨 위)', S.record.date, v => S.record.date = v, { ph: '2026년 11월, 광주에서 기록했다.' }));
+    hint('날짜 줄 틀: "[연도]년 [월]월, [지역]에서 기록했다." 지역은 시·도까지만. 여러 사람이 나오는 편은 날짜만 쓰고 지역은 각자의 소개 첫 줄에.');
+    { const gl = document.createElement('label'); gl.className = 'chk'; const g = document.createElement('input'); g.type = 'checkbox'; g.checked = S.record.line;
+      g.addEventListener('change', () => { S.record.line = g.checked; schedule(); }); gl.append(g, ' 기록 문장 넣기 ("○○은 지금, 겨울에 있다고 했다.")'); P.append(gl); }
     P.append(field('사진 출처 (남의 사진일 때만)', S.cover.source, v => S.cover.source = v, { ph: '직접 찍은 사진이면 비워두세요' }));
   } else if (sel.startsWith('p')) {
     const i = +sel.slice(1), p = S.pages[i]; h.textContent = `본문 ${i + 1} · ${FORMATS[S.format]}`;
@@ -605,7 +640,7 @@ function renderPanel() {
       });
       if (p.items.length < 3) { const add = document.createElement('button'); add.type = 'button'; add.className = 'small'; add.textContent = '+ 문답 추가';
         add.addEventListener('click', () => { p.items.push({ q: '', a: '' }); renderPanel(); }); P.append(add); }
-    } else if (F === 'interview') {
+    } else if (F === 'interview' || F === 'four') {
       P.append(field('소개 문단 (3인칭 "~했다고 한다", 약 230자)', p.intro, v => p.intro = v, { rows: 6, after: count }));
       const row = document.createElement('div'); row.className = 'row';
       row.append(field('이름 (가명)', p.speaker, v => p.speaker = v, { ph: '예: 정훈' }));
@@ -636,10 +671,15 @@ function renderPanel() {
     }
     P.append(cnt); count();
   } else if (sel === 'wrap') {
-    h.textContent = '에디터 정리 장';
-    hint('제목 한 줄 + 두 문단. 앞 장들의 이야기를 묶는 관찰. 판단·조언·교훈 없이, 현재형 "~다"로 맺어요.');
+    h.textContent = '기록자의 말';
+    hint('제목 한 줄 + 두 문단. 앞 장들의 이야기를 묶는 기록자의 관찰. 판단·조언·위로·교훈 없이, 현재형 "~다"로 맺어요.');
     P.append(field('제목', S.wrap.title, v => S.wrap.title = v, { rows: 2, ph: '20대는 생각보다\n금방 지나간다.' }));
     P.append(field('본문 (문단은 빈 줄로, 굵게 한 줄)', S.wrap.body, v => S.wrap.body = v, { rows: 12 }));
+    const gl = document.createElement('label'); gl.className = 'chk'; const g = document.createElement('input'); g.type = 'checkbox'; g.checked = S.wrap.sign !== false;
+    g.addEventListener('change', () => { S.wrap.sign = g.checked; schedule(); }); gl.append(g, ' "— 환절기 기록자" 서명과 낙관 찍기'); P.append(gl);
+    const sl = document.createElement('label'); sl.textContent = '낙관 색'; const ss = document.createElement('select');
+    [['auto', '자동 (한 사람이면 계절색, 여러 사람이면 먹색)'], ['season', '이 편의 계절색'], ['ink', '먹색'], ['red', '인주 빨강']].forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; ss.append(o); });
+    ss.value = S.record.seal; ss.addEventListener('change', () => { S.record.seal = ss.value; schedule(); }); sl.append(ss); P.append(sl);
     onBox(P, 'wrap', S.wrap.on);
   } else if (sel === 'season') {
     h.textContent = '당신은 지금 어느 계절에 있나요?';
@@ -821,6 +861,7 @@ $('btnRedo').addEventListener('click', redo);
 function load(obj) {
   const f = FORMATS[obj.format] ? obj.format : 'qa', b = blank(f);
   S = { ...b, ...obj, format: f, cover: { ...b.cover, ...(obj.cover || {}) }, seasonPage: { ...b.seasonPage, ...(obj.seasonPage || {}) }, cta: { ...b.cta, ...(obj.cta || {}), on: false }, other: obj.other || {},
+    record: { ...b.record, ...(obj.record || {}) },
     wrap: obj.wrap ? { ...b.wrap, on: true, ...obj.wrap } : (obj.pages && !obj.seasonAnswer && PERSON(f) ? { ...b.wrap, on: false } : b.wrap) };
   if (obj.cover && !obj.cover.text && (obj.cover.t1 || obj.cover.t2)) S.cover.text = [obj.cover.t1, obj.cover.t2].filter(Boolean).join('\n');
   if (obj.seasonAnswer) S.seasonPage.answer = obj.seasonAnswer;
@@ -862,6 +903,9 @@ ${SEASON_DEF}
 
 → 고른 계절: ___
 → 이유: ___
+
+○ 사는 지역(시·도)도 알려줘. 예) 광주, 서울 (밝히기 싫으면 비워도 돼)
+→ 지역: ___
 
 ○ 공개 방식: 익명 / 가명(원하는 이름: ___ ) 중 골라 줘.`;
 const TIPS = `이름은 절대 안 나가고, 원하면 가명이나 익명으로 올릴게.
@@ -934,6 +978,7 @@ ${SEASON_Q}`,
 7. 그 뒤의 장면: 누구를 만났고, 무엇을 먹었고, 무슨 말을 삼켰나?
 8. 지금 누가 "잘 지내?"라고 물으면 뭐라고 답하나?
 9. 나는 지금 어느 계절에 있나? (봄·여름·가을·겨울 중 하나와 이유)`,
+  four: '[같은 질문, 네 개의 계절]\n인터뷰형 질문지를 그대로 쓰고, 답이 모이면 봄·여름·가을·겨울에 있는 사람을 한 명씩 골라 4장으로 묶어요.\n질문은 하나만, 짧고 모두가 답할 수 있게. 예) 요즘 가장 자주 하는 거짓말은?',
   curation: SOLO('연예인 큐레이션'),
   number: SOLO('숫자 한 장'),
   note: SOLO('환절기 노트'),
@@ -944,6 +989,7 @@ const SCHEMA = {
   qa: `"pages": [ { "headline": "“그 장을 대표하는 원문 속 실제 말”", "items": [ { "q": "질문", "a": "말한 그대로의 답" }, { "q": "...", "a": "..." } ] } ]`,
   interview: `"pages": [ { "headline": "“본인이 한 말 2줄”", "intro": "3인칭 소개 약 230자", "speaker": "가명", "season": "그 사람이 고른 계절", "speech": "본인 말투 500자 이상" } ], "wrap": { "title": "정리 장 제목", "body": "두 문단" }`,
   essay: `"pages": [ { "headline": "", "body": "1인칭 한 문단 230~390자" } ]`,
+  four: `"pages": [ { "headline": "“본인이 한 말”", "intro": "3인칭 소개", "speaker": "가명", "season": "봄", "speech": "발언" }, ... 여름·가을·겨울 순서 ], "wrap": { "title": "", "body": "" }`,
   curation: `"pages": [ { "headline": "“공개 발언 중 한 줄”", "intro": "3인칭 소개, 공개된 사실만", "speaker": "인물 이름", "speech": "공개 발언 그대로", "source": "(출처: 매체, 연도)" } ], "wrap": { "title": "", "body": "" }`,
   number: `"pages": [ { "num": "41%", "label": "한 줄 설명", "body": "숫자 뒤의 장면 3~4줄", "source": "(출처: 기관, 조사명, 연도)" } ], "wrap": { "title": "", "body": "" }`,
   note: `"pages": [ { "headline": "", "body": "관찰 문단, 현재형 ~다" } ], "wrap": { "title": "", "body": "" }`,
@@ -952,8 +998,9 @@ const SCHEMA = {
 };
 const RULES = {
   qa: '문답형: 한 사람, 본문 3~4장, 장마다 문답 2개 약 350자. 질문은 짧게, 답은 원문 말투(~요) 그대로, 답마다 굵게 한 문장. 마지막은 어느 계절 장.',
-  interview: '인터뷰형: 한 주제에 여러 명, 한 사람당 1장 + 에디터 정리 장. 큰따옴표 제목은 본인 말 2줄. 소개 문단은 3인칭 "~했다고 한다" 약 230자. 발언은 원문 말투(~요) 500자 이상, 요약하지 말고 ①질문에 대한 답 ②그때 상황 ③구체적 장면 ④결정적 순간(굵게) ⑤그 뒤 장면 ⑥지금의 해석 ⑦그리움·바람 순서로. 굵게는 1~2문장. 표지는 "[대상]에게 물었다. “질문?”". 정리 장은 제목 한 줄 + 두 문단 관찰.',
+  interview: '인터뷰형: 한 주제에 여러 명, 한 사람당 1장 + 기록자의 말. 큰따옴표 제목은 본인 말 2줄. 소개 문단은 3인칭 "~했다고 한다" 약 230자. 발언은 원문 말투(~요) 500자 이상, 요약하지 말고 ①질문에 대한 답 ②그때 상황 ③구체적 장면 ④결정적 순간(굵게) ⑤그 뒤 장면 ⑥지금의 해석 ⑦그리움·바람 순서로. 굵게는 1~2문장. 표지는 "[대상]에게 물었다. “질문?”". 정리 장은 제목 한 줄 + 두 문단 관찰.',
   essay: '에세이형: 본인이 직접 쓴 이야기만. 본문 6장, 1인칭 과거형 "~다", 장마다 한 문단 230~390자. 1장은 질문으로 열고 "그때의 나는 ~라고 믿었다"를 굵게 뒤집기, 마지막 장은 현재형 장면으로 끝. 장마다 굵게 한 줄(중간 위치 가능), 반복 단어 하나가 전체를 관통.',
+  four: '같은 질문, 네 개의 계절: 질문 하나에 봄·여름·가을·겨울에 있는 사람 각 1명, 계절 순서로 4장 + 기록자의 말. 표지 "같은 질문, 네 개의 계절 / “질문?”". 장마다 소개 약 200자 + 발언 400자 이상, 마지막에 기록 문장.',
   curation: '연예인 큐레이션: 한 주제 라벨에 3~4명, 1인 1장 + 정리 장. 공개 인터뷰·방송 발언만, 3인칭, 출처·연도 필수. 1인칭 각색·루머 금지. 표지에 이름 미노출. 표지는 "~한 사람들은 어떻게 살아가고 있는가?" 형식.',
   number: '숫자 한 장: 본문 3~4장, 장마다 큰 숫자 + 한 줄 설명 + 숫자 뒤의 장면 3~4줄 + 출처. 공공기관·언론 조사만, 모든 수치에 출처·연도. 해석·조언 금지. 정리 장은 숫자들을 한 계절로 묶는 관찰.',
   note: '환절기 노트: 2030이 공통으로 겪는 순간 하나를 관찰. 표지 "○○는 / 생각보다 ○○하다." 본문 4장: 3인칭 관찰 → 흔한 장면 세 가지 → 공통점 → 계절로 맺기. 현재형 "~다", "~해야 한다" 금지.',
