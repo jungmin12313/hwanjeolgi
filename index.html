@@ -85,7 +85,7 @@
 </head>
 <body>
 <header>
-  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v11 · 2026.11.22</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
+  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v12 · 2026.11.22</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
   <div class="bar">
     <label class="fmt">형식
       <select id="selFormat"><option value="qa">문답형</option><option value="interview">인터뷰형</option><option value="essay">에세이형</option></select>
@@ -187,7 +187,7 @@ const blank = (f = 'qa') => ({
   cover: { on: true, text: '', source: '', focus: 40, grade: true, dim: true },
   pages: [blankPage(f)], other: {},
   seasonPage: { on: true, answer: '' },
-  cta: { on: true, question: '혼자 짊어진\n무게가 있나요?', watermark: true, title: '당신의 환절기를\n들려주세요', body: '익명이어도, 특별한 이야기가 아니어도 괜찮아요. 전해주신 이야기는 누군가에겐 커다란 희망과 위로가 될 수 있어요.', link: '사연은 프로필 링크에서 받고 있어요' }
+  cta: { on: false, question: '혼자 짊어진\n무게가 있나요?', watermark: true, title: '당신의 환절기를\n들려주세요', body: '익명이어도, 특별한 이야기가 아니어도 괜찮아요. 전해주신 이야기는 누군가에겐 커다란 희망과 위로가 될 수 있어요.', link: '사연은 프로필 링크에서 받고 있어요' }
 });
 let S = blank(), sel = 'cover', photoImg = null;
 
@@ -441,7 +441,6 @@ function paint() {
   if (S.pages.length < 10) addBtn('+ 본문 장 추가', () => { const at = sel.startsWith('p') ? +sel.slice(1) + 1 : S.pages.length; S.pages.splice(at, 0, blankPage(S.format)); sel = 'p' + at; paint(); renderPanel(); });
   if (!S.cover.on) addBtn('+ 표지 추가', () => setOn('cover', true));
   if (!S.seasonPage.on) addBtn('+ 어느 계절 장 추가', () => setOn('season', true));
-  if (!S.cta.on) addBtn('+ 마지막 질문 장 추가', () => setOn('cta', true));
   const curBtn = strip.querySelector('[aria-current="true"]'); if (curBtn && curBtn.scrollIntoView) curBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
   const cur = items.find(i => i.id === sel); const st = $('stageCanvas'); st.innerHTML = '';
   cur.c.setAttribute('role', 'img'); cur.c.setAttribute('aria-label', cur.label + ' 미리보기'); st.append(cur.c);
@@ -720,7 +719,7 @@ $('btnUndo').addEventListener('click', undo);
 $('btnRedo').addEventListener('click', redo);
 function load(obj) {
   const f = FORMATS[obj.format] ? obj.format : 'qa', b = blank(f);
-  S = { ...b, ...obj, format: f, cover: { ...b.cover, ...(obj.cover || {}) }, seasonPage: { ...b.seasonPage, ...(obj.seasonPage || {}) }, cta: { ...b.cta, ...(obj.cta || {}) }, other: obj.other || {} };
+  S = { ...b, ...obj, format: f, cover: { ...b.cover, ...(obj.cover || {}) }, seasonPage: { ...b.seasonPage, ...(obj.seasonPage || {}) }, cta: { ...b.cta, ...(obj.cta || {}), on: false }, other: obj.other || {} };
   if (obj.cover && !obj.cover.text && (obj.cover.t1 || obj.cover.t2)) S.cover.text = [obj.cover.t1, obj.cover.t2].filter(Boolean).join('\n');
   if (obj.seasonAnswer) S.seasonPage.answer = obj.seasonAnswer;
   if (!SEASONS.includes(S.season)) S.season = '겨울';
