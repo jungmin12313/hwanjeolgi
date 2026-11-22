@@ -85,7 +85,7 @@
 </head>
 <body>
 <header>
-  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v10 · 2026.11.22</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
+  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v11 · 2026.11.22</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
   <div class="bar">
     <label class="fmt">형식
       <select id="selFormat"><option value="qa">문답형</option><option value="interview">인터뷰형</option><option value="essay">에세이형</option></select>
@@ -187,7 +187,7 @@ const blank = (f = 'qa') => ({
   cover: { on: true, text: '', source: '', focus: 40, grade: true, dim: true },
   pages: [blankPage(f)], other: {},
   seasonPage: { on: true, answer: '' },
-  cta: { on: true, title: '당신의 환절기를\n들려주세요', body: '익명이어도, 특별한 이야기가 아니어도 괜찮아요. 전해주신 이야기는 누군가에겐 커다란 희망과 위로가 될 수 있어요.', link: '사연은 프로필 링크에서 받고 있어요' }
+  cta: { on: true, question: '혼자 짊어진\n무게가 있나요?', watermark: true, title: '당신의 환절기를\n들려주세요', body: '익명이어도, 특별한 이야기가 아니어도 괜찮아요. 전해주신 이야기는 누군가에겐 커다란 희망과 위로가 될 수 있어요.', link: '사연은 프로필 링크에서 받고 있어요' }
 });
 let S = blank(), sel = 'cover', photoImg = null;
 
@@ -370,16 +370,44 @@ function drawSeason(n) {
 }
 
 // ---------- 사연 모집 ----------
+// ---------- 마지막 질문 (손글씨) ----------
+function rng(seed) { let x = seed || 7; return () => (x = (x * 16807) % 2147483647) / 2147483647; }
+function brushStroke(ctx, x0, y0, len, color, seed) {
+  // 붓으로 한 번 그은 듯한 획: 여러 겹의 흔들린 곡선
+  const r = rng(seed); ctx.save(); ctx.strokeStyle = color; ctx.lineCap = 'round';
+  for (let k = 0; k < 22; k++) {
+    const off = (r() - 0.5) * 22, w = 5 + r() * 10;
+    ctx.globalAlpha = 0.35 + r() * 0.5; ctx.lineWidth = w; ctx.beginPath();
+    ctx.moveTo(x0 + r() * 10, y0 + off);
+    ctx.bezierCurveTo(x0 + len * 0.3, y0 + off - 10 - r() * 8, x0 + len * 0.65, y0 + off + 8 + r() * 6, x0 + len - r() * 30 * (k % 3), y0 + off - 6 + r() * 4);
+    ctx.stroke();
+  }
+  // 끝의 먹 튐
+  for (let k = 0; k < 6; k++) { ctx.globalAlpha = 0.4 + r() * 0.4; ctx.beginPath(); ctx.arc(x0 + len + 10 + r() * 40, y0 - 10 + r() * 24, 1.5 + r() * 3.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); }
+  ctx.restore();
+}
 function drawCta() {
   const c = canvas(), ctx = c.getContext('2d'), v = S.cta; paper(ctx);
-  drawBrush(ctx, '사연', 300, INK, MX - 10, 250);
-  let y = 640; ctx.textBaseline = 'top';
-  y = drawLines(ctx, layout(ctx, [[v.title, 'black', INK]], MW, 60), MX, y, 86, 60) + 44;
-  y = drawLines(ctx, layout(ctx, rich(v.body, 'medium', GRAY), MW, 35), MX, y, 64, 35) + 70;
-  ctx.strokeStyle = INK; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(MX, y); ctx.lineTo(MX + 56, y); ctx.stroke(); y += 40;
-  ctx.font = font('xbold', 36); ctx.fillStyle = INK; ctx.fillText(v.link, MX, y);
-  ctx.font = font('bold', 28); ctx.fillStyle = SUB; ctx.fillText('@hwanjeolgi.mag', MX, H - 130);
-  return { c, over: y > H - 190 - 40 + 60 };
+  const col = SEASON[S.season] || INK;
+  // 1) 배경: 계절 붓글씨를 아주 옅게, 오른쪽 아래로 흘러 나가게
+  if (v.watermark !== false) {
+    const b = brush(S.season, col), hgt = 900, sc = hgt / (b.h - 60), dw = b.w * sc;
+    ctx.save(); ctx.globalAlpha = 0.07; ctx.drawImage(b.c, W - dw * 0.78, H - hgt * 0.92, dw, b.h * sc); ctx.restore();
+  }
+  // 2) 질문: 동해독도 붓글씨, 줄마다 크기 자동 맞춤
+  const lines = String(v.question || '혼자 짊어진\n무게가 있나요?').split('\n').filter(Boolean).slice(0, 4);
+  const X = 110, maxW = W - X * 2;
+  let lh = lines.length <= 2 ? 170 : lines.length === 3 ? 140 : 115;
+  const widthAt = (t, h) => { const b = brush(t, INK); return b.w * h / (b.h - 60); };
+  while (lines.some(t => widthAt(t, lh) > maxW) && lh > 70) lh -= 6;
+  const gap = lh * 0.42, total = lines.length * lh + (lines.length - 1) * gap;
+  let y = Math.round(H * 0.42 - total / 2);
+  lines.forEach(t => { drawBrush(ctx, t, lh, INK, X, y); y += lh + gap; });
+  // 3) 계절색 붓 획
+  brushStroke(ctx, X, y + 46, 300, col, (S.season.charCodeAt(0) || 3) + lines.join('').length);
+  // 4) 로고
+  drawBrush(ctx, '환절기', 46, INK, 0, H - 120, true);
+  return { c, over: false };
 }
 
 // ---------- 목록 ----------
@@ -390,7 +418,7 @@ function build() {
   if (S.cover.on) items.push({ id: 'cover', label: '표지', file: '00_표지.png', ...drawCover() });
   S.pages.forEach((p, i) => { n++; items.push({ id: 'p' + i, label: `본문 ${n}`, file: `${pad2(n)}_본문.png`, ...drawPage(p, n) }); });
   if (S.seasonPage.on) { n++; items.push({ id: 'season', label: '어느 계절', file: `${pad2(n)}_어느계절.png`, ...drawSeason(n) }); }
-  if (S.cta.on) items.push({ id: 'cta', label: '사연 모집', file: `${pad2(n + 1)}_사연모집.png`, ...drawCta() });
+  if (S.cta.on) items.push({ id: 'cta', label: '마지막 질문', file: `${pad2(n + 1)}_마지막질문.png`, ...drawCta() });
   if (!items.length) { S.pages.push(blankPage(S.format)); return build(); }
   if (!items.find(i => i.id === sel)) sel = items[0].id;
 }
@@ -413,7 +441,7 @@ function paint() {
   if (S.pages.length < 10) addBtn('+ 본문 장 추가', () => { const at = sel.startsWith('p') ? +sel.slice(1) + 1 : S.pages.length; S.pages.splice(at, 0, blankPage(S.format)); sel = 'p' + at; paint(); renderPanel(); });
   if (!S.cover.on) addBtn('+ 표지 추가', () => setOn('cover', true));
   if (!S.seasonPage.on) addBtn('+ 어느 계절 장 추가', () => setOn('season', true));
-  if (!S.cta.on) addBtn('+ 사연 모집 장 추가', () => setOn('cta', true));
+  if (!S.cta.on) addBtn('+ 마지막 질문 장 추가', () => setOn('cta', true));
   const curBtn = strip.querySelector('[aria-current="true"]'); if (curBtn && curBtn.scrollIntoView) curBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
   const cur = items.find(i => i.id === sel); const st = $('stageCanvas'); st.innerHTML = '';
   cur.c.setAttribute('role', 'img'); cur.c.setAttribute('aria-label', cur.label + ' 미리보기'); st.append(cur.c);
@@ -528,10 +556,11 @@ function renderPanel() {
     hint('답변에 계절 단어를 쓰면 자동으로 바뀌어요. 본문의 ==강조== 색도 이 계절을 따라가요.');
     onBox(P, 'season', S.seasonPage.on);
   } else if (sel === 'cta') {
-    h.textContent = '사연 모집';
-    P.append(field('큰 문구', S.cta.title, v => S.cta.title = v, { rows: 2 }));
-    P.append(field('안내 문장', S.cta.body, v => S.cta.body = v, { rows: 3 }));
-    P.append(field('마지막 줄', S.cta.link, v => S.cta.link = v));
+    h.textContent = '마지막 질문';
+    const hp = document.createElement('p'); hp.className = 'hint'; hp.textContent = '동해독도 붓글씨로 들어가요. 한 줄에 8자 안팎, 2~3줄이 가장 예뻐요. 붓 획과 배경 글씨는 이 편의 계절색을 따라가요.'; P.append(hp);
+    P.append(field('질문 (줄바꿈 그대로)', S.cta.question, v => S.cta.question = v, { rows: 3, ph: '혼자 짊어진\n무게가 있나요?' }));
+    const gl = document.createElement('label'); gl.className = 'chk'; const g = document.createElement('input'); g.type = 'checkbox'; g.checked = S.cta.watermark !== false;
+    g.addEventListener('change', () => { S.cta.watermark = g.checked; schedule(); }); gl.append(g, ' 배경에 계절 붓글씨 옅게 넣기'); P.append(gl);
     onBox(P, 'cta', S.cta.on);
   }
 }
