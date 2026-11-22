@@ -85,7 +85,7 @@
 </head>
 <body>
 <header>
-  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v16 · 2026.11.22</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
+  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v17 · 2026.11.23</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
   <div class="bar">
     <label class="fmt">형식
       <select id="selFormat"><optgroup label="사람 이야기"><option value="interview">인터뷰형 (여러 명)</option><option value="four">같은 질문, 네 개의 계절</option><option value="qa">문답형 (한 사람)</option><option value="essay">에세이형 (본인)</option><option value="curation">연예인 큐레이션</option></optgroup><optgroup label="기록자 콘텐츠"><option value="number">숫자 한 장</option><option value="note">환절기 노트</option><option value="signal">계절 신호</option><option value="shelf">계절의 책장</option></optgroup></select>
@@ -919,7 +919,7 @@ const TIPS = `이름은 절대 안 나가고, 원하면 가명이나 익명으�
 const SOLO = what => `[${what}] Claude 단독 제작이에요.
 질문지는 없어요. 오른쪽 아래 "요청문 복사"를 눌러 주제 칸만 채워 Claude에게 보내면, 도구 칸별 텍스트로 받을 수 있어요.
 
-BRAND_TONE.md 12장 기준으로 만들어요.`;
+BRAND_TONE.md · EDITORIAL_WORKFLOW.md · EDITORIAL_CHECKLIST.md 기준으로, 기획안부터 만들어요.`;
 const QUESTIONS = {
   interview: `[환절기 매거진 투고 부탁]
 
@@ -1010,8 +1010,8 @@ const RULES = {
 function promptFor(f) {
   const solo = !PERSON(f);
   const head = solo
-    ? `환절기 카드뉴스 ${FORMATS[f]}을 만들어줘.\n\n주제: (여기에 주제나 계절을 적기)\n\nBRAND_TONE.md를 먼저 다시 읽고, 도구 칸별로 바로 복붙할 수 있는 텍스트로 줘.`
-    : `아래 원문을 환절기 카드뉴스 ${FORMATS[f]}으로 정리해줘. BRAND_TONE.md를 먼저 다시 읽고, 도구 칸별로 바로 복붙할 수 있는 텍스트로 줘.`;
+    ? `환절기 카드뉴스 ${FORMATS[f]}을 만들어줘.\n\n주제: (여기에 주제나 계절을 적기)\n\nBRAND_TONE.md, EDITORIAL_WORKFLOW.md, EDITORIAL_CHECKLIST.md를 먼저 다시 읽고, 기획안 → 취재 → 핵심 관점 → 구성안 → 초고 → 검증 → 퇴고 → 발행 심사 순서로 진행해줘. 최종 원고는 도구 칸별로 바로 복붙할 수 있는 텍스트로.`
+    : `아래 원문을 환절기 카드뉴스 ${FORMATS[f]}으로 정리해줘. BRAND_TONE.md, EDITORIAL_WORKFLOW.md, EDITORIAL_CHECKLIST.md를 먼저 다시 읽고, 기획안 → 취재 → 핵심 관점 → 구성안 → 초고 → 검증 → 퇴고 → 발행 심사 순서로 진행해줘. 최종 원고는 도구 칸별로 바로 복붙할 수 있는 텍스트로.`;
   return `${head}
 
 규칙
