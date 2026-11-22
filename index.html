@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=East+Sea+Dokdo&family=Gothic+A1:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{--ink:#1B1918;--paper:#F3F1EE;--card:#FFFFFF;--line:#DDD8D0;--sub:#6E685F;--accent:#B84E2B;--warn:#B3261E}
   *{box-sizing:border-box}
@@ -84,11 +85,12 @@
 </head>
 <body>
 <header>
-  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v9 · 2026.11.22</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
+  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v10 · 2026.11.22</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
   <div class="bar">
     <label class="fmt">형식
       <select id="selFormat"><option value="qa">문답형</option><option value="interview">인터뷰형</option><option value="essay">에세이형</option></select>
     </label>
+    <button class="ghost" id="btnAuth" type="button" hidden>로그인 (기기 동기화)</button>
     <button class="ghost" id="btnUndo" type="button" title="Ctrl+Z">↶ 되돌리기</button>
     <button class="ghost" id="btnRedo" type="button" title="Ctrl+Shift+Z">↷ 다시하기</button>
     <button class="ghost" id="btnGuide" type="button">질문지 · 요청문</button>
@@ -128,6 +130,27 @@
     </div>
     <pre class="code" id="formatBox" hidden></pre>
   </form>
+</dialog>
+
+<dialog id="dlgAuth">
+  <div class="dlg">
+    <h3>기기 동기화 로그인</h3>
+    <div id="authIn">
+      <p class="hint">PC와 핸드폰에서 같은 계정으로 로그인하면 작업 내용과 표지 사진이 이어져요. 처음이면 "가입하기"를 눌러주세요.</p>
+      <label>이메일<input type="text" id="authEmail" inputmode="email" autocomplete="email"></label>
+      <label>비밀번호 (6자 이상)<input type="password" id="authPw" autocomplete="current-password" style="width:100%;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit"></label>
+      <div class="bar" style="justify-content:flex-end;margin-top:12px">
+        <button type="button" class="small" id="btnSignUp">가입하기</button>
+        <button type="button" class="small primary" id="btnSignIn">로그인</button>
+      </div>
+    </div>
+    <div id="authOut" hidden>
+      <p class="hint" id="authWho"></p>
+      <div class="bar" style="justify-content:flex-end"><button type="button" class="small" id="btnSignOut">로그아웃</button></div>
+    </div>
+    <p class="hint" id="authMsg"></p>
+    <div class="bar" style="justify-content:flex-end"><button type="button" class="small" id="btnAuthClose">닫기</button></div>
+  </div>
 </dialog>
 
 <dialog id="dlgGuide">
@@ -575,21 +598,70 @@ async function pullRemote() {
   try { const [a, b] = await Promise.all([stateRef.get(), photoRef.get()]);
     if (a.exists) applyRemote(a.data()); if (b.exists) applyPhoto(b.data()); setSync('☁ 모든 기기에 저장됨'); } catch (e) {}
 }
-async function initCloud() {
-  if (!(window.claude && window.claude.use)) { booting = false; return; }
+async function connect(sRef, pRef, preferRemote) {
+  stateRef = sRef; photoRef = pRef; setSync('불러오는 중…');
+  const timer = setTimeout(() => setSync('이 기기에만 저장 (연결 대기)'), 10000);
   try {
-    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
-    if (!db || !user) { booting = false; return; } const id = await user.id(); if (!id) { booting = false; return; }
-    stateRef = db.doc(`data/users/${id}/state`); photoRef = db.doc(`data/users/${id}/photo`);
-    setSync('불러오는 중…');
-    const timer = setTimeout(() => setSync('이 기기에만 저장 (연결 대기)'), 10000);
     const [a, b] = await Promise.all([stateRef.get(), photoRef.get()]); clearTimeout(timer); booting = false;
     const remote = a.exists ? a.data() : null;
-    if (!applyRemote(remote) && (!remote || localUpdated > (remote.updatedAt || 0))) { if (!localUpdated) localUpdated = Date.now(); cloudSave(); }
+    if (remote && remote.state && preferRemote) { localUpdated = 0; applyRemote(remote); setSync('☁ 모든 기기에 저장됨'); }
+    else if (!applyRemote(remote) && (!remote || !remote.state || localUpdated > (remote.updatedAt || 0))) { if (!localUpdated) localUpdated = Date.now(); cloudSave(); }
     else setSync('☁ 모든 기기에 저장됨');
     if (b.exists) applyPhoto(b.data());
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pullRemote(); });
-  } catch (e) { setSync('이 기기에만 저장'); }
+  } catch (e) { clearTimeout(timer); setSync('이 기기에만 저장 (연결 실패)'); }
+  booting = false;
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pullRemote(); });
+
+// ---- claude.ai 링크에서 열었을 때: Claude 저장소 ----
+async function initClaude() {
+  try {
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    if (!db || !user) return false; const id = await user.id(); if (!id) return false;
+    await connect(db.doc(`data/users/${id}/state`), db.doc(`data/users/${id}/photo`), false); return true;
+  } catch (e) { return false; }
+}
+
+// ---- 일반 사이트(Netlify)에서 열었을 때: Supabase + 이메일 로그인 ----
+const SB_URL = 'https://bimpvqcfbkdssucsnjsb.supabase.co';
+const SB_KEY = 'sb_publishable_iBoNfUGXCKFCi2VFvzIfBQ_C6SHQ0vV';
+let sb = null, sbUser = null;
+function sbRefs(uid) {
+  const row = async cols => { const { data, error } = await sb.from('drafts').select(cols).eq('user_id', uid).maybeSingle(); if (error) throw error; return data; };
+  const up = async obj => { const { error } = await sb.from('drafts').upsert({ user_id: uid, ...obj }); if (error) throw error; };
+  return [
+    { get: async () => { const d = await row('state,updated_at'); return { exists: !!(d && d.state), data: () => d && { state: d.state, updatedAt: +d.updated_at } }; },
+      set: async v => up({ state: v.state, updated_at: v.updatedAt }) },
+    { get: async () => { const d = await row('photo,photo_updated_at'); return { exists: !!(d && d.photo), data: () => d && { data: d.photo, updatedAt: +d.photo_updated_at } }; },
+      set: async v => up({ photo: v.data, photo_updated_at: v.updatedAt }) }
+  ];
+}
+function authUI() {
+  const btn = $('btnAuth'); if (!btn) return;
+  btn.hidden = !sb; btn.textContent = sbUser ? '계정' : '로그인 (기기 동기화)';
+  $('authIn').hidden = !!sbUser; $('authOut').hidden = !sbUser;
+  if (sbUser) $('authWho').textContent = `${sbUser.email} 으로 로그인되어 있어요. PC와 핸드폰에서 같은 계정으로 로그인하면 작업이 이어져요.`;
+}
+async function initSupabase() {
+  if (!(window.supabase && window.supabase.createClient)) { setSync('이 기기에만 저장'); return; }
+  sb = window.supabase.createClient(SB_URL, SB_KEY);
+  const { data } = await sb.auth.getSession(); sbUser = data.session ? data.session.user : null; authUI();
+  if (sbUser) { const [a, b] = sbRefs(sbUser.id); await connect(a, b, false); }
+  else { booting = false; setSync('이 기기에만 저장 · 로그인하면 동기화'); }
+}
+async function authDo(kind) {
+  const email = $('authEmail').value.trim(), pw = $('authPw').value; const m = $('authMsg');
+  if (!email || pw.length < 6) { m.textContent = '이메일과 6자 이상 비밀번호를 입력하세요.'; return; }
+  m.textContent = '확인 중…';
+  const r = kind === 'up' ? await sb.auth.signUp({ email, password: pw }) : await sb.auth.signInWithPassword({ email, password: pw });
+  if (r.error) { m.textContent = /Invalid login/i.test(r.error.message) ? '이메일 또는 비밀번호가 맞지 않아요.' : /already registered/i.test(r.error.message) ? '이미 가입된 이메일이에요. 로그인을 눌러주세요.' : /confirm/i.test(r.error.message) ? '메일함의 인증 링크를 먼저 눌러주세요.' : '오류: ' + r.error.message; return; }
+  if (!r.data.session) { m.textContent = '가입됐어요. 메일함의 인증 링크를 누른 뒤 로그인을 눌러주세요.'; return; }
+  sbUser = r.data.session.user; authUI(); m.textContent = ''; $('dlgAuth').close();
+  const [a, b] = sbRefs(sbUser.id); await connect(a, b, true);
+}
+async function initCloud() {
+  if (window.claude && window.claude.use) { if (await initClaude()) return; }
+  await initSupabase();
   booting = false;
 }
 async function savePhoto(img) {
@@ -767,6 +839,12 @@ Promise.all([document.fonts.load("40px 'East Sea Dokdo'", '환절기사연봄여
   ...[400, 500, 700, 800, 900].map(w => document.fonts.load(`${w} 30px 'Gothic A1'`, '가나다'))])
   .catch(() => {}).finally(() => { bcache.clear(); paint(); });
 if (window.claude && window.claude.use) window.claude.use('downloads').then(ns => { dl = ns; }).catch(() => {});
+$('btnAuth').addEventListener('click', () => { $('authMsg').textContent = ''; authUI(); $('dlgAuth').showModal(); });
+$('btnAuthClose').addEventListener('click', () => $('dlgAuth').close());
+$('btnSignIn').addEventListener('click', () => authDo('in'));
+$('btnSignUp').addEventListener('click', () => authDo('up'));
+$('btnSignOut').addEventListener('click', async () => { await sb.auth.signOut(); sbUser = null; stateRef = photoRef = null; authUI(); setSync('이 기기에만 저장 · 로그인하면 동기화'); $('dlgAuth').close(); });
+$('sync').style.cursor = 'pointer'; $('sync').addEventListener('click', () => { if (sb) $('btnAuth').click(); });
 initCloud();
 })();
 </script>
