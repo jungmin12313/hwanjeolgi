@@ -1,2 +1,4 @@
 [build]
   publish = "."
+  # 도구·현황판(index.html, desk/)이 바뀐 커밋만 배포한다. 문서(.md)만 바뀐 커밋은 배포를 건너뛰어 배포 횟수를 아낀다.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- index.html desk/ supabase.sql"
