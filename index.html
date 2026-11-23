@@ -85,7 +85,7 @@
 </head>
 <body>
 <header>
-  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v21 · 2026.11.23</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
+  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v22 · 2026.11.23</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
   <div class="bar">
     <label class="fmt">형식
       <select id="selFormat"><optgroup label="사람 이야기"><option value="interview">인터뷰형 (여러 명)</option><option value="four">같은 질문, 네 개의 계절</option><option value="qa">문답형 (한 사람)</option><option value="essay">에세이형 (본인)</option><option value="curation">연예인 큐레이션 (3~4명)</option><option value="solo">한 사람의 계절 (연예인 1인)</option></optgroup><optgroup label="기록자 콘텐츠"><option value="number">숫자 한 장</option><option value="note">환절기 노트</option><option value="signal">계절 신호</option><option value="shelf">계절의 책장</option></optgroup></select>
@@ -179,7 +179,7 @@ const FORMATS = { qa: '문답형', interview: '인터뷰형', four: '같은 질�
 // 형식별 마지막 장 기본값: 어느 계절 장 / 기록자의 말
 const ENDS = { qa: [1, 0], essay: [1, 0], interview: [0, 1], four: [0, 1], curation: [0, 1], solo: [0, 1], number: [0, 1], note: [0, 1], signal: [0, 1], shelf: [0, 1] };
 const PERSON = f => f === 'qa' || f === 'interview' || f === 'essay';
-const TARGET = { four: '소개 약 200자 · 발언 400자 이상', qa: '장마다 문답 2쌍 · 약 350자', interview: '소개 약 230자 · 발언 500자 이상', essay: '한 문단 230~390자', curation: '소개 약 230자 · 공개 발언 300~500자', solo: '장마다 한 문단 300~450자, 발언은 문장 안에', number: '장면 150~250자', note: '300~400자', signal: '장면 4~5줄', shelf: '200~300자' };
+const TARGET = { four: '소개 약 200자 · 발언 400자 이상', qa: '장마다 문답 2쌍 · 약 350자', interview: '소개 약 230자 · 발언 500자 이상', essay: '한 문단 230~390자', curation: '소개 약 230자 · 공개 발언 300~500자', solo: '장마다 소개 4~6문장 · 말 300~450자', number: '장면 150~250자', note: '300~400자', signal: '장면 4~5줄', shelf: '200~300자' };
 let CUR = null; // 장별 계절 (인터뷰형: 사람마다 계절)
 const $ = id => document.getElementById(id);
 const STORE = 'hwanjeolgi-tool-v3';
@@ -187,7 +187,7 @@ const STORE = 'hwanjeolgi-tool-v3';
 // ---------- 상태 ----------
 const blankPage = f => f === 'qa' ? { headline: '', items: [{ q: '', a: '' }, { q: '', a: '' }] }
   : f === 'interview' || f === 'four' ? { headline: '', intro: '', speaker: '', speech: '', season: '' }
-  : f === 'curation' ? { headline: '', intro: '', speaker: '', speech: '', source: '' }
+  : f === 'curation' || f === 'solo' ? { headline: '', intro: '', speaker: '', speech: '', source: '' }
   : f === 'number' ? { num: '', label: '', body: '', source: '' }
   : f === 'signal' ? { headline: '', lines: '' }
   : f === 'shelf' ? { title: '', meta: '', body: '', quote: '' }
@@ -392,7 +392,7 @@ function drawPage(p, n) {
   const f = S.format; CUR = ((f === 'interview' || f === 'four') && SEASONS.includes(p.season)) ? p.season : null;
   const hasDate = n === 1 && dateLine(ctx);
   if (PERSON(f) || f === 'curation' || f === 'solo') header(ctx, !hasDate); else logoTR(ctx);
-  const talk = f === 'interview' || f === 'curation' || f === 'four';
+  const talk = f === 'interview' || f === 'curation' || f === 'four' || f === 'solo';
   let y = headline(ctx, p.headline, TOP, talk ? 84 : 92), end = y;
   if (f === 'qa') {
     const items = (p.items || []).filter(it => it.q || it.a);
@@ -646,7 +646,7 @@ function renderPanel() {
     const count = () => {
       let t;
       if (F === 'qa') t = `이 장 ${len(p.items.map(x => x.q + x.a).join(''))}자`;
-      else if (F === 'interview' || F === 'curation') t = `소개 ${len(p.intro)}자 · ${F === 'interview' ? '발언' : '공개 발언'} ${len(p.speech)}자`;
+      else if (F === 'interview' || F === 'curation' || F === 'solo') t = `소개 ${len(p.intro)}자 · ${F === 'interview' ? '발언' : '공개 발언'} ${len(p.speech)}자`;
       else if (F === 'signal') t = `장면 ${String(p.lines || '').split('\n').filter(x => x.trim()).length}줄`;
       else t = `이 장 ${len(p.body)}자`;
       cnt.textContent = `${t} (공백 제외 · 기준: ${TARGET[F]})`; };
@@ -671,7 +671,7 @@ function renderPanel() {
       ss.value = p.season || ''; ss.addEventListener('change', () => { p.season = ss.value; schedule(); }); sl.append(ss); row.append(sl); P.append(row);
       P.append(field('발언 (본인 말투 ~요, 500자 이상, 굵게 1~2문장)', p.speech, v => p.speech = v, { rows: 12, after: count }));
       hint('발언 순서: ① 질문에 대한 답 → ② 그때 상황 → ③ 구체적 장면 → ④ 결정적 순간(굵게) → ⑤ 그 뒤 장면 → ⑥ 지금의 해석 → ⑦ 그리움·바람');
-    } else if (F === 'curation') {
+    } else if (F === 'curation' || F === 'solo') {
       P.append(field('소개 문단 (3인칭, 공개된 사실만 · 첫 문장은 이름+신분)', p.intro, v => p.intro = v, { rows: 6, after: count }));
       P.append(field('인물 이름', p.speaker, v => p.speaker = v, { ph: '본문에서만 표기, 표지엔 미노출' }));
       P.append(field('공개 발언 (인터뷰·방송에서 한 말 그대로, 이어 붙이지 않기)', p.speech, v => p.speech = v, { rows: 9, after: count }));
