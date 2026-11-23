@@ -85,7 +85,7 @@
 </head>
 <body>
 <header>
-  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v20 · 2026.11.23</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
+  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v21 · 2026.11.23</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
   <div class="bar">
     <label class="fmt">형식
       <select id="selFormat"><optgroup label="사람 이야기"><option value="interview">인터뷰형 (여러 명)</option><option value="four">같은 질문, 네 개의 계절</option><option value="qa">문답형 (한 사람)</option><option value="essay">에세이형 (본인)</option><option value="curation">연예인 큐레이션 (3~4명)</option><option value="solo">한 사람의 계절 (연예인 1인)</option></optgroup><optgroup label="기록자 콘텐츠"><option value="number">숫자 한 장</option><option value="note">환절기 노트</option><option value="signal">계절 신호</option><option value="shelf">계절의 책장</option></optgroup></select>
@@ -179,7 +179,7 @@ const FORMATS = { qa: '문답형', interview: '인터뷰형', four: '같은 질�
 // 형식별 마지막 장 기본값: 어느 계절 장 / 기록자의 말
 const ENDS = { qa: [1, 0], essay: [1, 0], interview: [0, 1], four: [0, 1], curation: [0, 1], solo: [0, 1], number: [0, 1], note: [0, 1], signal: [0, 1], shelf: [0, 1] };
 const PERSON = f => f === 'qa' || f === 'interview' || f === 'essay';
-const TARGET = { four: '소개 약 200자 · 발언 400자 이상', qa: '장마다 문답 2쌍 · 약 350자', interview: '소개 약 230자 · 발언 500자 이상', essay: '한 문단 230~390자', curation: '소개 약 230자 · 공개 발언 300~500자', solo: '장마다 소개 약 230자 · 공개 발언 300~500자', number: '장면 150~250자', note: '300~400자', signal: '장면 4~5줄', shelf: '200~300자' };
+const TARGET = { four: '소개 약 200자 · 발언 400자 이상', qa: '장마다 문답 2쌍 · 약 350자', interview: '소개 약 230자 · 발언 500자 이상', essay: '한 문단 230~390자', curation: '소개 약 230자 · 공개 발언 300~500자', solo: '장마다 한 문단 300~450자, 발언은 문장 안에', number: '장면 150~250자', note: '300~400자', signal: '장면 4~5줄', shelf: '200~300자' };
 let CUR = null; // 장별 계절 (인터뷰형: 사람마다 계절)
 const $ = id => document.getElementById(id);
 const STORE = 'hwanjeolgi-tool-v3';
@@ -187,7 +187,7 @@ const STORE = 'hwanjeolgi-tool-v3';
 // ---------- 상태 ----------
 const blankPage = f => f === 'qa' ? { headline: '', items: [{ q: '', a: '' }, { q: '', a: '' }] }
   : f === 'interview' || f === 'four' ? { headline: '', intro: '', speaker: '', speech: '', season: '' }
-  : f === 'curation' || f === 'solo' ? { headline: '', intro: '', speaker: '', speech: '', source: '' }
+  : f === 'curation' ? { headline: '', intro: '', speaker: '', speech: '', source: '' }
   : f === 'number' ? { num: '', label: '', body: '', source: '' }
   : f === 'signal' ? { headline: '', lines: '' }
   : f === 'shelf' ? { title: '', meta: '', body: '', quote: '' }
@@ -392,7 +392,7 @@ function drawPage(p, n) {
   const f = S.format; CUR = ((f === 'interview' || f === 'four') && SEASONS.includes(p.season)) ? p.season : null;
   const hasDate = n === 1 && dateLine(ctx);
   if (PERSON(f) || f === 'curation' || f === 'solo') header(ctx, !hasDate); else logoTR(ctx);
-  const talk = f === 'interview' || f === 'curation' || f === 'four' || f === 'solo';
+  const talk = f === 'interview' || f === 'curation' || f === 'four';
   let y = headline(ctx, p.headline, TOP, talk ? 84 : 92), end = y;
   if (f === 'qa') {
     const items = (p.items || []).filter(it => it.q || it.a);
@@ -646,7 +646,7 @@ function renderPanel() {
     const count = () => {
       let t;
       if (F === 'qa') t = `이 장 ${len(p.items.map(x => x.q + x.a).join(''))}자`;
-      else if (F === 'interview' || F === 'curation' || F === 'solo') t = `소개 ${len(p.intro)}자 · ${F === 'interview' ? '발언' : '공개 발언'} ${len(p.speech)}자`;
+      else if (F === 'interview' || F === 'curation') t = `소개 ${len(p.intro)}자 · ${F === 'interview' ? '발언' : '공개 발언'} ${len(p.speech)}자`;
       else if (F === 'signal') t = `장면 ${String(p.lines || '').split('\n').filter(x => x.trim()).length}줄`;
       else t = `이 장 ${len(p.body)}자`;
       cnt.textContent = `${t} (공백 제외 · 기준: ${TARGET[F]})`; };
@@ -671,7 +671,7 @@ function renderPanel() {
       ss.value = p.season || ''; ss.addEventListener('change', () => { p.season = ss.value; schedule(); }); sl.append(ss); row.append(sl); P.append(row);
       P.append(field('발언 (본인 말투 ~요, 500자 이상, 굵게 1~2문장)', p.speech, v => p.speech = v, { rows: 12, after: count }));
       hint('발언 순서: ① 질문에 대한 답 → ② 그때 상황 → ③ 구체적 장면 → ④ 결정적 순간(굵게) → ⑤ 그 뒤 장면 → ⑥ 지금의 해석 → ⑦ 그리움·바람');
-    } else if (F === 'curation' || F === 'solo') {
+    } else if (F === 'curation') {
       P.append(field('소개 문단 (3인칭, 공개된 사실만 · 첫 문장은 이름+신분)', p.intro, v => p.intro = v, { rows: 6, after: count }));
       P.append(field('인물 이름', p.speaker, v => p.speaker = v, { ph: '본문에서만 표기, 표지엔 미노출' }));
       P.append(field('공개 발언 (인터뷰·방송에서 한 말 그대로, 이어 붙이지 않기)', p.speech, v => p.speech = v, { rows: 9, after: count }));
@@ -689,7 +689,8 @@ function renderPanel() {
       P.append(field('이 계절과 닮은 장면 (3~4줄)', p.body, v => p.body = v, { rows: 7, after: count }));
       P.append(field('짧은 인용 한 줄 (15자 안팎, 노래 가사 금지)', p.quote, v => p.quote = v, { ph: '따옴표 없이 입력' }));
     } else {
-      P.append(field(F === 'note' ? '본문 (관찰, 현재형 "~다")' : '본문 (한 문단, 굵게 한 줄)', p.body, v => p.body = v, { rows: 12, after: count }));
+      P.append(field(F === 'note' ? '본문 (관찰, 현재형 "~다")' : F === 'solo' ? '본문 (기록자 3인칭으로 이어 쓰기, 발언은 "따옴표"로 문장 안에, 굵게 한 번)' : '본문 (한 문단, 굵게 한 줄)', p.body, v => p.body = v, { rows: 12, after: count }));
+      if (F === 'solo') hint('이름+발언 칸이 따로 없어요. 장마다 연도를 밝히고, 서로 다른 때의 발언을 이어 붙이지 않아요. 출처는 캡션에.');
     }
     P.append(cnt); count();
   } else if (sel === 'wrap') {
@@ -1014,7 +1015,7 @@ const SCHEMA = {
   essay: `"pages": [ { "headline": "", "body": "1인칭 한 문단 230~390자" } ]`,
   four: `"pages": [ { "headline": "“본인이 한 말”", "intro": "3인칭 소개", "speaker": "가명", "season": "봄", "speech": "발언" }, ... 여름·가을·겨울 순서 ], "wrap": { "title": "", "body": "" }`,
   curation: `"pages": [ { "headline": "“공개 발언 중 한 줄”", "intro": "3인칭 소개, 공개된 사실만", "speaker": "인물 이름", "speech": "공개 발언 그대로", "source": "(출처: 매체, 연도)" } ], "wrap": { "title": "", "body": "" }`,
-  solo: `"pages": [ { "headline": "“그 장 발언 속 한 구절”", "intro": "이름+신분으로 여는 3인칭 소개, 장마다 연도", "speaker": "인물 이름", "speech": "그 시점의 공개 발언 그대로" } ], "wrap": { "title": "", "body": "" }`,
+  solo: `"pages": [ { "headline": "“그 장 발언 속 한 구절”", "body": "기록자 3인칭 한 문단. 발언은 따옴표로 문장 안에, 장마다 연도" } ]`,
   number: `"pages": [ { "num": "41%", "label": "한 줄 설명", "body": "숫자 뒤의 장면 3~4줄", "source": "(출처: 기관, 조사명, 연도)" } ], "wrap": { "title": "", "body": "" }`,
   note: `"pages": [ { "headline": "", "body": "관찰 문단, 현재형 ~다" } ], "wrap": { "title": "", "body": "" }`,
   signal: `"pages": [ { "headline": "", "lines": "장면 한 줄\\n장면 한 줄\\n..." } ], "wrap": { "title": "", "body": "그 계절의 정의로 맺기" }`,
@@ -1111,7 +1112,7 @@ const SAMPLES = {
 };
 Object.assign(SAMPLES, {
   solo: { format: 'solo', cover: { text: '[독자의 상황 라벨]인 사람은\n그 시간을 어떻게 지나왔을까?', source: '' }, pages: [
-    { headline: '“[그 장 발언 속 한 구절]”', intro: '[이름]은 [연도] [신분·이력]. 장마다 연도를 밝히고, 사실은 한 문장에 두 개까지.', speaker: '[인물 이름]', speech: '[그 시점에 실제로 한 말 그대로. 강조는 후반 한 문장.]', source: '' } ],
+    { headline: '“[그 장 발언 속 한 구절]”', body: '[이름]은 [연도] [신분·이력]. 기록자 3인칭으로 이어 쓰고, 발언은 "따옴표"로 문장 안에 넣는다. 장마다 연도를 밝히고 **강조는 후반 한 번**.' } ],
     wrap: { on: false, title: '', body: '' } },
   curation: { format: 'curation', cover: { text: '○○한 사람들은\n어떻게 살아가고 있는가?', source: '' }, pages: [
     { headline: '“[공개 발언 중 한 줄]”', intro: '[인물]은 [연도], [매체] 인터뷰에서 [상황]을 이야기했다. 공개된 사실만 3인칭으로 적는다.', speaker: '[인물 이름]', speech: '[인터뷰·방송에서 실제로 한 말을 그대로. 굵게는 한 문장.]', source: '(출처: [매체], [연도])' } ],
