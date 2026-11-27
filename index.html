@@ -85,7 +85,7 @@
 </head>
 <body>
 <header>
-  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v22 · 2026.11.23</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
+  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v23 · 2026.11.27</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
   <div class="bar">
     <label class="fmt">형식
       <select id="selFormat"><optgroup label="사람 이야기"><option value="interview">인터뷰형 (여러 명)</option><option value="four">같은 질문, 네 개의 계절</option><option value="qa">문답형 (한 사람)</option><option value="essay">에세이형 (본인)</option><option value="curation">연예인 큐레이션 (3~4명)</option><option value="solo">한 사람의 계절 (연예인 1인)</option></optgroup><optgroup label="기록자 콘텐츠"><option value="number">숫자 한 장</option><option value="note">환절기 노트</option><option value="signal">계절 신호</option><option value="shelf">계절의 책장</option></optgroup></select>
@@ -543,7 +543,23 @@ function onBox(P, id) {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'small'; b.textContent = '이 장 삭제';
   b.style.alignSelf = 'flex-start'; b.addEventListener('click', () => setOn(id, false)); P.append(b);
 }
+// 카드에 들어간 글자를 글꼴 파일에서 미리 받아 둔다 (v23: 구글 폰트가 글자 묶음별로 나뉘어 있어 안 받은 글자가 기본 글꼴로 찍히던 문제)
+let fontKey = '', fontP = Promise.resolve();
+function cardText() {
+  const set = new Set('0123456789');
+  const walk = v => { if (typeof v === 'string') { if (!v.startsWith('data:')) for (const ch of v) if (ch.charCodeAt(0) > 127) set.add(ch); }
+    else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object') Object.values(v).forEach(walk); };
+  walk(S); return [...set].sort().join('');
+}
+function needFonts() {
+  const txt = cardText(); if (txt === fontKey) return;
+  fontKey = txt;
+  fontP = Promise.all([document.fonts.load(`40px 'East Sea Dokdo'`, txt),
+    ...[400, 500, 700, 800, 900].map(w => document.fonts.load(`${w} 30px 'Gothic A1'`, txt))])
+    .catch(() => {}).then(() => { bcache.clear(); paint(); });
+}
 function paint() {
+  needFonts();
   build(); $('selFormat').value = S.format;
   const strip = $('strip'); strip.innerHTML = '';
   items.forEach(it => {
@@ -741,13 +757,14 @@ async function zipOf(list, name) {
   const z = new JSZip(); for (const [f, c] of list) z.file(f, await blobOf(c));
   await deliver(name, await z.generateAsync({ type: 'blob' }));
 }
-$('btnSaveOne').addEventListener('click', async () => { const it = items.find(i => i.id === sel); deliver(it.file, await blobOf(it.c)); });
-$('btnZip').addEventListener('click', () => {
+$('btnSaveOne').addEventListener('click', async () => { await fontP; const it = items.find(i => i.id === sel); deliver(it.file, await blobOf(it.c)); });
+$('btnZip').addEventListener('click', async () => {
+  await fontP;
   const t = plain(S.cover.text || (S.pages[0] && S.pages[0].headline) || '카드뉴스').replace(/[\\/:*?"<>|,\s…“”]+/g, '_').slice(0, 24);
   zipOf(items.filter(i => !i.off).map(i => [i.file, i.c]), `환절기_${FORMATS[S.format]}_${t}.zip`);
 });
 $('btnShare').addEventListener('click', async () => {
-  const list = items.filter(i => !i.off);
+  await fontP; const list = items.filter(i => !i.off);
   try {
     const files = await Promise.all(list.map(async i => new File([await blobOf(i.c)], i.file, { type: 'image/png' })));
     if (navigator.canShare && navigator.canShare({ files })) { await navigator.share({ files }); return; }
