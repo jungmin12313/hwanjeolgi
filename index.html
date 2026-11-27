@@ -7,9 +7,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="환절기">
 <title>환절기 카드뉴스 제작 도구</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=East+Sea+Dokdo&family=Gothic+A1:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<!-- v24: 글꼴을 구글 폰트 서버 대신 사이트 안 파일(fonts/)로 직접 불러온다. 글자 묶음 분할·차단 없이 모든 한글이 같은 글꼴로 찍힌다 -->
+<link rel="preload" href="fonts/GothicA1-Black.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/GothicA1-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  @font-face{font-family:'Gothic A1';font-weight:400;font-style:normal;font-display:block;src:url('fonts/GothicA1-Regular.woff2') format('woff2')}
+  @font-face{font-family:'Gothic A1';font-weight:500;font-style:normal;font-display:block;src:url('fonts/GothicA1-Medium.woff2') format('woff2')}
+  @font-face{font-family:'Gothic A1';font-weight:700;font-style:normal;font-display:block;src:url('fonts/GothicA1-Bold.woff2') format('woff2')}
+  @font-face{font-family:'Gothic A1';font-weight:800;font-style:normal;font-display:block;src:url('fonts/GothicA1-ExtraBold.woff2') format('woff2')}
+  @font-face{font-family:'Gothic A1';font-weight:900;font-style:normal;font-display:block;src:url('fonts/GothicA1-Black.woff2') format('woff2')}
+  @font-face{font-family:'East Sea Dokdo';font-weight:400;font-style:normal;font-display:block;src:url('fonts/EastSeaDokdo-Regular.woff2') format('woff2')}
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -85,7 +93,7 @@
 </head>
 <body>
 <header>
-  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v23 · 2026.11.27</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
+  <h1><span class="logo">환절기</span> 카드뉴스 제작 도구 <small style="font-size:13px;font-weight:600;opacity:.7">v24 · 2026.11.27</small> <small id="sync" style="font-size:12px;font-weight:600;opacity:.75">이 기기에만 저장</small></h1>
   <div class="bar">
     <label class="fmt">형식
       <select id="selFormat"><optgroup label="사람 이야기"><option value="interview">인터뷰형 (여러 명)</option><option value="four">같은 질문, 네 개의 계절</option><option value="qa">문답형 (한 사람)</option><option value="essay">에세이형 (본인)</option><option value="curation">연예인 큐레이션 (3~4명)</option><option value="solo">한 사람의 계절 (연예인 1인)</option></optgroup><optgroup label="기록자 콘텐츠"><option value="number">숫자 한 장</option><option value="note">환절기 노트</option><option value="signal">계절 신호</option><option value="shelf">계절의 책장</option></optgroup></select>
@@ -543,7 +551,7 @@ function onBox(P, id) {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'small'; b.textContent = '이 장 삭제';
   b.style.alignSelf = 'flex-start'; b.addEventListener('click', () => setOn(id, false)); P.append(b);
 }
-// 카드에 들어간 글자를 글꼴 파일에서 미리 받아 둔다 (v23: 구글 폰트가 글자 묶음별로 나뉘어 있어 안 받은 글자가 기본 글꼴로 찍히던 문제)
+// 카드에 들어간 글자의 글꼴이 다 준비된 뒤 다시 그린다 (v23 도입, v24부터 글꼴은 사이트 안 파일)
 let fontKey = '', fontP = Promise.resolve();
 function cardText() {
   const set = new Set('0123456789');
@@ -1160,8 +1168,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft') move(-1); if (e.key === 'ArrowRight') move(1);
 });
 paint(); renderPanel();
-Promise.all([document.fonts.load("40px 'East Sea Dokdo'", '환절기사연봄여름가을겨울0123456789'),
-  ...[400, 500, 700, 800, 900].map(w => document.fonts.load(`${w} 30px 'Gothic A1'`, '가나다'))])
+Promise.all([document.fonts.load("40px 'East Sea Dokdo'", '환'),
+  ...[400, 500, 700, 800, 900].map(w => document.fonts.load(`${w} 30px 'Gothic A1'`, '가'))])
   .catch(() => {}).finally(() => { bcache.clear(); paint(); });
 if (window.claude && window.claude.use) window.claude.use('downloads').then(ns => { dl = ns; }).catch(() => {});
 $('btnAuth').addEventListener('click', () => { $('authMsg').textContent = ''; authUI(); $('dlgAuth').showModal(); });
